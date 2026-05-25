@@ -1,5 +1,5 @@
 # YT-Music-Tagger
- Youtube Playlist, Apple Music Tagging, Downloading - I Vibe coded this to quickly add music to my Navidrome Setup, i might update it to add more fatures like Spotify Support for Downloading and Tags but idk
+ YouTube Playlist, Apple Music Tagging, Downloading - I vibe-coded this to quickly add music to my Navidrome setup. I might update it to add more features like Spotify support for downloading and tags, but IDK
 
 ## ✨ Features
 
