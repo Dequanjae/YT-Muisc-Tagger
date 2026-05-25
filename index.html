@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Suite | Downloader & Tagger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-primary: #3b82f6;
+            --accent-secondary: #38bdf8;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --success: #10b981;
+            --error: #ef4444;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.15) 0px, transparent 50%);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Master Navigation --- */
+        nav.master-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            gap: 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 1000;
+        }
+
+        .nav-switch {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.4rem;
+            border-radius: 99px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .nav-btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 99px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            z-index: 2;
+        }
+
+        .nav-btn.active {
+            color: white;
+        }
+
+        .nav-indicator {
+            position: absolute;
+            height: calc(100% - 0.8rem);
+            width: calc(50% - 0.4rem);
+            background: var(--accent-primary);
+            border-radius: 99px;
+            top: 0.4rem;
+            left: 0.4rem;
+            transition: var(--transition);
+            z-index: 1;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .nav-switch.tagger-active .nav-indicator {
+            left: 50%;
+            background: var(--accent-secondary);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+        }
+
+        /* --- View Containers --- */
+        .view-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: var(--transition);
+        }
+
+        .view.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* --- SHARED STYLES --- */
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        button.primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid var(--glass-border);
+        }
+
+        input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* --- DOWNLOADER VIEW STYLES --- */
+        #downloader-view {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+            overflow-y: auto;
+        }
+
+        .dl-container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .dl-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .dl-header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .dl-header .accent {
+            color: var(--accent-primary);
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .dl-input-card {
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .dl-input-card input {
+            flex: 1;
+            font-size: 1rem;
+        }
+
+        .dl-input-card button {
+            padding: 0 2rem;
+            border-radius: 0.5rem;
+        }
+
+        .dl-status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .dl-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .dl-progress-bg {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .dl-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), #60a5fa);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* --- TAGGER VIEW STYLES --- */
+        #tagger-view, #editor-view {
+            display: flex;
+        }
+
+        .tag-sidebar, .edit-sidebar {
+            width: 280px;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+        }
+
+        .tag-main, .edit-main {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .file-item {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 0.4rem;
+            font-size: 0.85rem;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .file-item.active {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
+        }
+
+        .tag-player-card, .edit-form-card {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .edit-form-card {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .edit-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .edit-row label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .tag-artwork {
+            width: 150px;
+            height: 150px;
+            border-radius: 1rem;
+            object-fit: cover;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 1rem;
+            filter: invert(1) hue-rotate(180deg) brightness(1.5);
+        }
+
+        .tag-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .match-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: flex;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .match-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-secondary);
+        }
+
+        /* --- TOAST --- */
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 2.5rem;
+            border-radius: 1rem;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            transform: translateY(200%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        #toast.show {
+            transform: translateY(0);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    </style>
+</head>
+<body>
+
+    <nav class="master-nav">
+        <div class="nav-switch" id="nav-switch">
+            <div class="nav-indicator" id="nav-indicator" style="width: calc(33.33% - 0.4rem);"></div>
+            <button class="nav-btn active" onclick="switchView('downloader')" style="width: 33.33%;">
+                <i class="fas fa-cloud-download-alt"></i> Downloader
+            </button>
+            <button class="nav-btn" onclick="switchView('tagger')" style="width: 33.33%;">
+                <i class="fas fa-tags"></i> Tagger
+            </button>
+            <button class="nav-btn" onclick="switchView('editor')" style="width: 33.33%;">
+                <i class="fas fa-edit"></i> Editor
+            </button>
+        </div>
+    </nav>
+
+    <div class="view-container">
+        <!-- DOWNLOADER VIEW -->
+        <div id="downloader-view" class="view active">
+            <div class="dl-container">
+                <header class="dl-header">
+                    <h1>Music <span class="accent">Suite</span></h1>
+                    <p style="color: var(--text-secondary);">Download entire YouTube playlists as high-quality MP3</p>
+                </header>
+
+                <div class="dl-input-card glass">
+                    <input type="text" id="dl-url" placeholder="Paste YouTube Playlist URL...">
+                    <button class="primary" id="dl-btn" onclick="startDownload()" style="min-width: 140px;">Download</button>
+                </div>
+
+                <div id="dl-status-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 id="dl-playlist-title" style="font-size: 1.2rem;">Initializing...</h2>
+                        <span id="dl-count" style="background: rgba(255,255,255,0.1); padding: 0.3rem 0.8rem; border-radius: 1rem; font-size: 0.8rem;">0 Videos</span>
+                    </div>
+                    <div id="dl-list" class="dl-status-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAGGER VIEW -->
+        <div id="tagger-view" class="view">
+            <div class="tag-sidebar">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary);">Queue</h3>
+                    <button onclick="loadTaggerFiles()" class="secondary" style="padding: 0.3rem 0.6rem; font-size: 0.7rem;">Refresh</button>
+                </div>
+                <div id="tag-file-list" class="file-list"></div>
+            </div>
+
+            <div class="tag-main">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="tag-current-file">Select a file to begin</h1>
+                    <div id="tag-loader" style="display: none;"><i class="fas fa-circle-notch fa-spin"></i></div>
+                </div>
+
+                <div class="tag-player-card glass">
+                    <img id="tag-artwork-img" src="https://via.placeholder.com/1000?text=No+Art" class="tag-artwork">
+                    <div style="flex: 1;">
+                        <h2 style="margin-bottom: 0.5rem;">Audio Preview</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Identify track metadata automatically</p>
+                        <audio id="tag-audio-player" controls></audio>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 1.5rem; display: flex; gap: 1rem; align-items: center;">
+                    <button class="primary" style="background: var(--accent-secondary); color: #0f172a;" onclick="identifyTaggerSong()">
+                        <i class="fas fa-magic"></i> Auto Identify
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;">
+                        <input type="checkbox" id="convert-opus" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                        <label for="convert-opus" style="cursor: pointer; font-size: 0.9rem;">Convert to Opus</label>
+                    </div>
+                    <div style="flex: 1; display: flex; gap: 0.5rem;">
+                        <input type="text" id="tag-apple-link" placeholder="Paste Apple Music link..." style="flex: 1;">
+                        <button class="secondary" onclick="lookupTaggerLink()">Fetch</button>
+                    </div>
+                </div>
+
+                <div id="tag-results-section" style="display: none;">
+                    <h3 style="margin-bottom: 1rem;">Matches <span id="tag-match-count" style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 0.2rem 0.5rem; border-radius: 1rem;">0</span></h3>
+                    <div id="tag-results-grid" class="tag-results"></div>
+                </div>
+            </div>
+        </div>
+        <!-- EDITOR VIEW -->
+        <div id="editor-view" class="view">
+            <div class="edit-sidebar">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary);">Completed Files</h3>
+                    <button onclick="loadEditorFiles()" class="secondary" style="padding: 0.3rem 0.6rem; font-size: 0.7rem;">Refresh</button>
+                </div>
+                <div id="edit-file-list" class="file-list"></div>
+            </div>
+
+            <div class="edit-main">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="edit-current-file">Select a completed file to edit</h1>
+                    <div id="edit-loader" style="display: none;"><i class="fas fa-circle-notch fa-spin"></i></div>
+                </div>
+
+                <div class="edit-form-card glass" id="edit-form-container" style="display: none;">
+                    <div class="edit-row">
+                        <label>Title</label>
+                        <input type="text" id="edit-title">
+                    </div>
+                    <div class="edit-row">
+                        <label>Artist</label>
+                        <input type="text" id="edit-artist">
+                    </div>
+                    <div class="edit-row">
+                        <label>Album</label>
+                        <input type="text" id="edit-album">
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <div class="edit-row" style="flex: 1;">
+                            <label>Genre</label>
+                            <input type="text" id="edit-genre">
+                        </div>
+                        <div class="edit-row" style="flex: 1;">
+                            <label>Year / Date</label>
+                            <input type="text" id="edit-date">
+                        </div>
+                    </div>
+                    
+                    <button class="primary" onclick="saveEditorTags()" style="margin-top: 1rem; align-self: flex-start; padding: 0.75rem 2rem;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Message here</div>
+
+    <script>
+        /* --- VIEW SWITCHER --- */
+        function switchView(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            const switcher = document.getElementById('nav-switch');
+            const indicator = document.getElementById('nav-indicator');
+            
+            if (view === 'downloader') {
+                document.getElementById('downloader-view').classList.add('active');
+                document.querySelectorAll('.nav-btn')[0].classList.add('active');
+                indicator.style.left = '0.4rem';
+                indicator.style.background = 'var(--accent-primary)';
+            } else if (view === 'tagger') {
+                document.getElementById('tagger-view').classList.add('active');
+                document.querySelectorAll('.nav-btn')[1].classList.add('active');
+                indicator.style.left = '33.33%';
+                indicator.style.background = 'var(--accent-secondary)';
+                loadTaggerFiles();
+            } else if (view === 'editor') {
+                document.getElementById('editor-view').classList.add('active');
+                document.querySelectorAll('.nav-btn')[2].classList.add('active');
+                indicator.style.left = 'calc(66.66% - 0.4rem)';
+                indicator.style.background = '#10b981'; // Green accent for editor
+                loadEditorFiles();
+            }
+        }
+
+        function showToast(msg, type = 'info') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.borderColor = type === 'error' ? 'var(--error)' : (type === 'success' ? 'var(--success)' : 'var(--glass-border)');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        /* --- DOWNLOADER LOGIC --- */
+        let dlSocket = null;
+        let dlFormat = 'mp3';
+        const dlCards = new Map();
+
+        function setFormat(fmt) {
+            dlFormat = fmt;
+            const btnOpus = document.getElementById('fmt-opus');
+            const btnMp3 = document.getElementById('fmt-mp3');
+            
+            if (fmt === 'opus') {
+                btnOpus.style.background = 'var(--accent-primary)';
+                btnOpus.style.color = 'white';
+                btnMp3.style.background = 'transparent';
+                btnMp3.style.color = 'var(--text-secondary)';
+            } else {
+                btnMp3.style.background = 'var(--accent-primary)';
+                btnMp3.style.color = 'white';
+                btnOpus.style.background = 'transparent';
+                btnOpus.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        function startDownload() {
+            const url = document.getElementById('dl-url').value.trim();
+            if (!url) return showToast('Please enter a URL', 'error');
+
+            const btn = document.getElementById('dl-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Working...';
+            
+            document.getElementById('dl-status-container').style.display = 'block';
+            document.getElementById('dl-list').innerHTML = '';
+            dlCards.clear();
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            dlSocket = new WebSocket(`${protocol}//${window.location.host}/ws/download`);
+
+            dlSocket.onopen = () => dlSocket.send(JSON.stringify({ url: url, format: dlFormat }));
+            dlSocket.onmessage = (e) => handleDlMessage(JSON.parse(e.data));
+            dlSocket.onclose = () => {
+                btn.disabled = false;
+                btn.textContent = 'Download';
+            };
+        }
+
+        function handleDlMessage(data) {
+            switch (data.type) {
+                case 'playlist_info':
+                    document.getElementById('dl-playlist-title').textContent = data.title;
+                    document.getElementById('dl-count').textContent = `${data.count} Videos`;
+                    break;
+                case 'progress':
+                case 'finished':
+                case 'done':
+                    updateDlCard(data);
+                    break;
+                case 'error':
+                    showToast(data.message, 'error');
+                    break;
+                case 'all_complete':
+                    showToast('All downloads complete!', 'success');
+                    break;
+            }
+        }
+
+        function updateDlCard(data) {
+            let card = dlCards.get(data.video_id);
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'dl-card';
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">${data.title}</span>
+                        <span class="status" style="font-size: 0.7rem; text-transform: uppercase; color: var(--accent-primary);">${data.status}</span>
+                    </div>
+                    <div class="dl-progress-bg"><div class="dl-progress-fill"></div></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                        <span class="info"></span>
+                        <span class="pct">0%</span>
+                    </div>
+                `;
+                document.getElementById('dl-list').prepend(card);
+                dlCards.set(data.video_id, card);
+            }
+
+            const fill = card.querySelector('.dl-progress-fill');
+            const status = card.querySelector('.status');
+            const info = card.querySelector('.info');
+            const pct = card.querySelector('.pct');
+
+            status.textContent = data.status;
+            if (data.percent) {
+                fill.style.width = data.percent;
+                pct.textContent = data.percent;
+            }
+            if (data.speed) info.textContent = `${data.speed} • ${data.eta || ''}`;
+            
+            if (data.type === 'done') {
+                fill.style.width = '100%';
+                status.style.color = 'var(--success)';
+                status.textContent = 'Completed';
+                // Trigger refresh in Tagger if it's open
+                loadTaggerFiles();
+            }
+        }
+
+        /* --- TAGGER LOGIC --- */
+        let tagCurrentFile = null;
+        let selectedMetadata = null;
+
+        async function loadTaggerFiles() {
+            try {
+                const res = await fetch('/api/files');
+                const files = await res.json();
+                const list = document.getElementById('tag-file-list');
+                list.innerHTML = '';
+                files.forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.textContent = f;
+                    div.onclick = () => selectTaggerFile(f, div);
+                    list.appendChild(div);
+                });
+            } catch (e) {}
+        }
+
+        function selectTaggerFile(filename, el) {
+            tagCurrentFile = filename;
+            document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('tag-current-file').textContent = filename;
+            document.getElementById('tag-audio-player').src = `/api/stream/${encodeURIComponent(filename)}`;
+            document.getElementById('tag-results-section').style.display = 'none';
+            document.getElementById('tag-artwork-img').src = "https://via.placeholder.com/1000?text=No+Art";
+        }
+
+        async function identifyTaggerSong() {
+            if (!tagCurrentFile) return showToast('Select a file first');
+            setTagLoading(true);
+            try {
+                const res = await fetch(`/api/identify/${encodeURIComponent(tagCurrentFile)}`);
+                const data = await res.json();
+                displayTagResults(data.candidates);
+            } catch (e) {
+                showToast('Identification failed', 'error');
+            } finally {
+                setTagLoading(false);
+            }
+        }
+
+        async function lookupTaggerLink() {
+            const url = document.getElementById('tag-apple-link').value;
+            if (!url) return showToast('Paste link first');
+            setTagLoading(true);
+            try {
+                const res = await fetch(`/api/lookup-link?url=${encodeURIComponent(url)}`);
+                if (!res.ok) throw new Error();
+                const candidate = await res.json();
+                displayTagResults([candidate]);
+                document.getElementById('tag-apple-link').value = '';
+            } catch (e) {
+                showToast('Link lookup failed', 'error');
+            } finally {
+                setTagLoading(false);
+            }
+        }
+
+        function displayTagResults(items) {
+            const grid = document.getElementById('tag-results-grid');
+            const section = document.getElementById('tag-results-section');
+            grid.innerHTML = '';
+            if (!items || items.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            document.getElementById('tag-match-count').textContent = items.length;
+            items.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = 'match-card';
+                card.onclick = () => { selectedMetadata = item; applyTaggerMetadata(item); };
+                card.innerHTML = `
+                    <img src="${item.artwork_url}" style="width: 50px; height: 50px; border-radius: 0.5rem;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.title}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${item.artist}</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary);">${item.album} (${item.release_date.split('-')[0]})</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+                if (idx === 0) document.getElementById('tag-artwork-img').src = item.artwork_url;
+            });
+        }
+
+        async function applyTaggerMetadata(metadata) {
+            if (!confirm(`Apply tags for "${metadata.title}"?`)) return;
+            setTagLoading(true);
+            try {
+                const convertOpus = document.getElementById('convert-opus') ? document.getElementById('convert-opus').checked : false;
+                const res = await fetch('/api/apply', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        filename: tagCurrentFile, 
+                        metadata: metadata,
+                        convert_to_opus: convertOpus 
+                    })
+                });
+                if (res.ok) {
+                    showToast('Metadata applied & file moved!', 'success');
+                    loadTaggerFiles();
+                    tagCurrentFile = null;
+                    document.getElementById('tag-results-section').style.display = 'none';
+                    document.getElementById('tag-current-file').textContent = 'Select a file to begin';
+                    document.getElementById('tag-audio-player').src = '';
+                    document.getElementById('tag-artwork-img').src = "https://via.placeholder.com/1000?text=No+Art";
+                }
+            } catch (e) {
+                showToast('Failed to apply tags', 'error');
+            } finally {
+                setTagLoading(false);
+            }
+        }
+
+        function setTagLoading(val) {
+            document.getElementById('tag-loader').style.display = val ? 'block' : 'none';
+        }
+
+        // --- EDITOR LOGIC ---
+        let editCurrentFile = null;
+
+        async function loadEditorFiles() {
+            try {
+                const res = await fetch('/api/completed_files');
+                const files = await res.json();
+                const list = document.getElementById('edit-file-list');
+                list.innerHTML = '';
+                files.forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.textContent = f;
+                    div.onclick = () => selectEditorFile(f, div);
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function selectEditorFile(filename, el) {
+            editCurrentFile = filename;
+            document.querySelectorAll('#edit-file-list .file-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('edit-current-file').textContent = filename;
+            document.getElementById('edit-loader').style.display = 'block';
+            document.getElementById('edit-form-container').style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/tags/${encodeURIComponent(filename)}`);
+                const data = await res.json();
+                if (data.tags) {
+                    document.getElementById('edit-title').value = data.tags.title || '';
+                    document.getElementById('edit-artist').value = data.tags.artist || '';
+                    document.getElementById('edit-album').value = data.tags.album || '';
+                    document.getElementById('edit-genre').value = data.tags.genre || '';
+                    document.getElementById('edit-date').value = data.tags.date || '';
+                    document.getElementById('edit-form-container').style.display = 'flex';
+                } else {
+                    showToast('Could not read tags', 'error');
+                }
+            } catch(e) {
+                showToast('Failed to load tags', 'error');
+            } finally {
+                document.getElementById('edit-loader').style.display = 'none';
+            }
+        }
+
+        async function saveEditorTags() {
+            if (!editCurrentFile) return;
+            document.getElementById('edit-loader').style.display = 'block';
+            
+            const payload = {
+                filename: editCurrentFile,
+                title: document.getElementById('edit-title').value,
+                artist: document.getElementById('edit-artist').value,
+                album: document.getElementById('edit-album').value,
+                genre: document.getElementById('edit-genre').value,
+                date: document.getElementById('edit-date').value
+            };
+
+            try {
+                const res = await fetch('/api/edit_tags', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast('Tags updated successfully', 'success');
+                    if (data.new_filename && data.new_filename !== editCurrentFile) {
+                        editCurrentFile = data.new_filename;
+                        document.getElementById('edit-current-file').textContent = editCurrentFile;
+                    }
+                    loadEditorFiles(); // Reload list to reflect any file renames
+                } else {
+                    showToast('Failed to save tags', 'error');
+                }
+            } catch(e) {
+                showToast('Error saving tags', 'error');
+            } finally {
+                document.getElementById('edit-loader').style.display = 'none';
+            }
+        }
+
+        // Init
+        loadTaggerFiles();
+    </script>
+</body>
+</html>

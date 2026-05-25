@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+yt-dlp
+requests
+mutagen
+ShazamAPI
+pydantic
+websockets
+Pillow
