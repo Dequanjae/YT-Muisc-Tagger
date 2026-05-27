@@ -56,12 +56,27 @@ class ApplyRequest(BaseModel):
 
 # --- DOWNLOADER HELPERS ---
 def download_playlist_sync(url: str, format_type: str, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+    playlist_detected = {"sent": False}  # track if we've sent playlist info
+
     def progress_hook(d):
+        info = d.get('info_dict', {})
+        
+        # Detect playlist info from the first progress event
+        if not playlist_detected["sent"]:
+            playlist_title = info.get('playlist_title') or info.get('playlist')
+            playlist_count = info.get('n_entries') or info.get('playlist_count')
+            if playlist_title and playlist_count:
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "playlist_info", "title": playlist_title, "count": playlist_count}),
+                    loop
+                )
+                playlist_detected["sent"] = True
+
         if d['status'] == 'downloading':
             msg = {
                 "type": "progress",
-                "video_id": d.get('info_dict', {}).get('id', 'unknown'),
-                "title": d.get('info_dict', {}).get('title', 'Unknown Title'),
+                "video_id": info.get('id', 'unknown'),
+                "title": info.get('title', 'Unknown Title'),
                 "percent": d.get('_percent_str', '').strip(),
                 "speed": d.get('_speed_str', '').strip(),
                 "eta": d.get('_eta_str', '').strip(),
@@ -71,8 +86,8 @@ def download_playlist_sync(url: str, format_type: str, queue: asyncio.Queue, loo
         elif d['status'] == 'finished':
             msg = {
                 "type": "finished",
-                "video_id": d.get('info_dict', {}).get('id', 'unknown'),
-                "title": d.get('info_dict', {}).get('title', 'Unknown Title'),
+                "video_id": info.get('id', 'unknown'),
+                "title": info.get('title', 'Unknown Title'),
                 "status": "Converting..."
             }
             asyncio.run_coroutine_threadsafe(queue.put(msg), loop)
@@ -114,17 +129,18 @@ def download_playlist_sync(url: str, format_type: str, queue: asyncio.Queue, loo
     }
 
     try:
+        # Send an immediate "starting" message so the UI updates right away
+        asyncio.run_coroutine_threadsafe(
+            queue.put({"type": "status", "message": "Fetching playlist info..."}),
+            loop
+        )
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if 'entries' in info:
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "playlist_info", "title": info.get('title'), "count": len(info['entries'])}), 
-                    loop
-                )
+            # Single pass: extract info AND download together (no double scan)
             ydl.download([url])
         asyncio.run_coroutine_threadsafe(queue.put({"type": "all_complete"}), loop)
     except Exception as e:
         asyncio.run_coroutine_threadsafe(queue.put({"type": "error", "message": str(e)}), loop)
+
 
 # --- TAGGER HELPERS ---
 def get_shazam_info(path):
