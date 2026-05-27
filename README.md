@@ -1,4 +1,5 @@
-# YT-Music-Tagger Winows/Linux/MacOS
+# YT-Music-Tagger
+## NOW SUPPORTS Winows/Linux/MacOS
  YouTube Playlist, Apple Music Tagging, Downloading - I vibe-coded this to quickly add music to my Navidrome setup. I might update it to add more features like Spotify support for downloading and tags, but IDK
 
 ## ✨ Features
